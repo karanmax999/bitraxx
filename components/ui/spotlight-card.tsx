@@ -44,6 +44,10 @@ const BEFORE_AFTER_CSS = `
   mask-clip: padding-box, border-box;
   mask-composite: intersect;
 }
+[data-glow]::before,
+[data-glow]::after {
+  background-attachment: local;
+}
 [data-glow]::before {
   background-image: radial-gradient(
     calc(var(--spotlight-size) * 0.75) calc(var(--spotlight-size) * 0.75) at
@@ -90,19 +94,17 @@ export const GlowCard: React.FC<GlowCardProps> = ({
 }) => {
   const cardRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    const syncPointer = (e: PointerEvent) => {
-      const { clientX: x, clientY: y } = e;
-      if (cardRef.current) {
-        cardRef.current.style.setProperty('--x', x.toFixed(2));
-        cardRef.current.style.setProperty('--xp', (x / window.innerWidth).toFixed(2));
-        cardRef.current.style.setProperty('--y', y.toFixed(2));
-        cardRef.current.style.setProperty('--yp', (y / window.innerHeight).toFixed(2));
-      }
-    };
-    document.addEventListener('pointermove', syncPointer);
-    return () => document.removeEventListener('pointermove', syncPointer);
-  }, []);
+  const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    const { clientX: x, clientY: y } = e;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const localX = x - rect.left;
+    const localY = y - rect.top;
+
+    e.currentTarget.style.setProperty('--x', localX.toFixed(2));
+    e.currentTarget.style.setProperty('--xp', (x / window.innerWidth).toFixed(2));
+    e.currentTarget.style.setProperty('--y', localY.toFixed(2));
+    e.currentTarget.style.setProperty('--yp', (y / window.innerHeight).toFixed(2));
+  };
 
   const { base, spread } = glowColorMap[glowColor];
 
@@ -127,10 +129,8 @@ export const GlowCard: React.FC<GlowCardProps> = ({
     backgroundColor: 'var(--backdrop)',
     backgroundSize: 'calc(100% + (2 * var(--border-size))) calc(100% + (2 * var(--border-size)))',
     backgroundPosition: '50% 50%',
-    backgroundAttachment: 'fixed',
     border: 'var(--border-size) solid var(--backup-border)',
     position: 'relative',
-    touchAction: 'none',
   };
 
   if (width !== undefined)  inlineStyles.width  = typeof width  === 'number' ? `${width}px`  : width;
@@ -144,6 +144,7 @@ export const GlowCard: React.FC<GlowCardProps> = ({
       <div
         ref={cardRef}
         data-glow
+        onPointerMove={handlePointerMove}
         style={inlineStyles}
         className={`${sizeClasses} rounded-2xl relative shadow-[0_1rem_2rem_-1rem_rgba(0,0,0,0.6)] backdrop-blur-[6px] ${className}`}
       >
