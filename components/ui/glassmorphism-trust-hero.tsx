@@ -1,7 +1,10 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
+import Image from "next/image";
 import { ArrowRight, Zap, Crown, Star, Hexagon, Triangle, Command, Ghost, Gem, Cpu } from "lucide-react";
+import { useInView, usePageVisible, usePrefersReducedMotion } from "@/lib/performance";
+import { HERO_BG, HERO_IMAGE_SIZES } from "@/config/assets";
 
 const CLIENTS = [
   { name: "Binance",   icon: Hexagon  },
@@ -12,11 +15,6 @@ const CLIENTS = [
   { name: "Chainlink", icon: Cpu      },
 ];
 
-// 4K image — full resolution, no width cap
-const BG_DARK  = "https://hoirqrkdgbmvpwutwuwj.supabase.co/storage/v1/object/public/assets/assets/a72ca2f3-9dd1-4fe4-84ba-fe86468a5237_3840w.webp";
-// Light mode: a bright futuristic city/tech image from Unsplash (4K)
-const BG_LIGHT = "https://images.unsplash.com/photo-1639762681485-074b7f938ba0?w=3840&q=90&auto=format&fit=crop";
-
 const StatItem = ({ value, label }: { value: string; label: string }) => (
   <div className="flex flex-col items-center justify-center transition-transform hover:-translate-y-1 cursor-default">
     <span className="text-xl font-bold sm:text-2xl text-gold">{value}</span>
@@ -25,9 +23,12 @@ const StatItem = ({ value, label }: { value: string; label: string }) => (
 );
 
 export default function HeroSection() {
-  const bgRef      = useRef<HTMLDivElement>(null);
+  const bgRef = useRef<HTMLDivElement>(null);
   const sectionRef = useRef<HTMLDivElement>(null);
   const [isDark, setIsDark] = useState(true);
+  const reducedMotion = usePrefersReducedMotion();
+  const pageVisible = usePageVisible();
+  const heroInView = useInView(sectionRef);
 
   // Sync theme
   useEffect(() => {
@@ -61,7 +62,10 @@ export default function HeroSection() {
     };
 
     const tick = () => {
-      if (!bgRef.current) { raf = requestAnimationFrame(tick); return; }
+      if (!bgRef.current || reducedMotion || !pageVisible || !heroInView) {
+        raf = requestAnimationFrame(tick);
+        return;
+      }
 
       // Smooth lerp toward mouse position
       currentMX += (targetMX - currentMX) * 0.04;
@@ -95,9 +99,9 @@ export default function HeroSection() {
       window.removeEventListener("mousemove", onMouse);
       cancelAnimationFrame(raf);
     };
-  }, []);
+  }, [reducedMotion, pageVisible, heroInView]);
 
-  const bgUrl = isDark ? BG_DARK : BG_LIGHT;
+  const bgUrl = isDark ? HERO_BG.dark : HERO_BG.light;
 
   return (
     <div ref={sectionRef} className="relative w-full overflow-hidden font-sans" style={{ backgroundColor: "var(--bg-base)", color: "var(--text-primary)" }}>
@@ -113,18 +117,25 @@ export default function HeroSection() {
         .delay-500 { animation-delay: 0.65s; }
       `}</style>
 
-      {/* ── 4K Background ── */}
       <div
         ref={bgRef}
-        className="absolute inset-[-8%] z-0 bg-cover bg-center will-change-transform"
+        className="absolute inset-[-8%] z-0 overflow-hidden will-change-transform"
         style={{
-          backgroundImage: `url(${bgUrl})`,
-          opacity: isDark ? 0.30 : 0.18,
-          maskImage:         "linear-gradient(180deg, transparent 0%, black 12%, black 78%, transparent 100%)",
-          WebkitMaskImage:   "linear-gradient(180deg, transparent 0%, black 12%, black 78%, transparent 100%)",
-          transition: "opacity 0.6s ease, background-image 0.6s ease",
+          opacity: isDark ? 0.3 : 0.18,
+          maskImage: "linear-gradient(180deg, transparent 0%, black 12%, black 78%, transparent 100%)",
+          WebkitMaskImage: "linear-gradient(180deg, transparent 0%, black 12%, black 78%, transparent 100%)",
         }}
-      />
+      >
+        <Image
+          src={bgUrl}
+          alt=""
+          fill
+          priority
+          sizes={HERO_IMAGE_SIZES}
+          quality={65}
+          className="object-cover"
+        />
+      </div>
 
       {/* Light mode: extra blue tint overlay so image doesn't wash out the text */}
       {!isDark && (
@@ -133,10 +144,14 @@ export default function HeroSection() {
       )}
 
       {/* Ambient glows */}
-      <div className="pointer-events-none absolute -top-32 -left-32 h-96 w-96 rounded-full blur-3xl z-0"
-        style={{ backgroundColor: isDark ? "rgba(245,158,11,0.07)" : "rgba(59,130,246,0.10)" }} />
-      <div className="pointer-events-none absolute -bottom-32 right-0 h-80 w-80 rounded-full blur-3xl z-0"
-        style={{ backgroundColor: isDark ? "rgba(217,119,6,0.05)" : "rgba(59,130,246,0.08)" }} />
+      <div
+        className="pointer-events-none absolute -top-32 -left-32 hidden h-96 w-96 rounded-full blur-3xl z-0 md:block"
+        style={{ backgroundColor: isDark ? "rgba(245,158,11,0.07)" : "rgba(59,130,246,0.10)" }}
+      />
+      <div
+        className="pointer-events-none absolute -bottom-32 right-0 hidden h-80 w-80 rounded-full blur-3xl z-0 md:block"
+        style={{ backgroundColor: isDark ? "rgba(217,119,6,0.05)" : "rgba(59,130,246,0.08)" }}
+      />
 
       {/* Content */}
       <div className="relative z-10 mx-auto max-w-7xl px-4 pt-24 pb-12 sm:px-6 md:pt-32 md:pb-20 lg:px-8">
@@ -147,7 +162,7 @@ export default function HeroSection() {
 
             {/* Badge */}
             <div className="animate-fade-in delay-100">
-              <div className="inline-flex items-center gap-2 rounded-full border border-amber-500/25 bg-amber-500/8 px-4 py-1.5 backdrop-blur-md">
+              <div className="glass-panel inline-flex items-center gap-2 rounded-full border border-amber-500/25 bg-amber-500/8 px-4 py-1.5">
                 <span className="relative flex h-1.5 w-1.5">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
                   <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-amber-400" />
@@ -181,7 +196,7 @@ export default function HeroSection() {
                 Buy BRX Now
                 <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
               </button>
-              <button className="group inline-flex items-center justify-center gap-2 rounded-full border border-amber-500/25 bg-amber-500/5 px-8 py-4 text-sm font-semibold text-amber-300 backdrop-blur-sm transition-all hover:bg-amber-500/10 hover:border-amber-500/40">
+              <button className="glass-panel group inline-flex items-center justify-center gap-2 rounded-full border border-amber-500/25 bg-amber-500/5 px-8 py-4 text-sm font-semibold text-amber-300 transition-all hover:bg-amber-500/10 hover:border-amber-500/40">
                 <Zap className="w-4 h-4 text-amber-400" />
                 View Tokenomics
               </button>
@@ -200,7 +215,7 @@ export default function HeroSection() {
             {/* Stats card */}
             <div className="animate-fade-in delay-400 relative overflow-hidden rounded-2xl p-px"
               style={{ background: "linear-gradient(135deg, rgba(245,158,11,0.3) 0%, rgba(245,158,11,0.05) 50%, rgba(245,158,11,0.15) 100%)" }}>
-              <div className="relative rounded-2xl p-7 backdrop-blur-xl" style={{ backgroundColor: "var(--bg-card)" }}>
+              <div className="glass-panel relative rounded-2xl p-7" style={{ backgroundColor: "var(--bg-card)" }}>
                 <div className="pointer-events-none absolute top-0 right-0 -mr-10 -mt-10 h-48 w-48 rounded-full bg-amber-500/8 blur-2xl" />
                 <div className="relative z-10">
                   <div className="flex items-center gap-3 mb-6">
@@ -254,8 +269,10 @@ export default function HeroSection() {
             </div>
 
             {/* Marquee card */}
-            <div className="animate-fade-in delay-500 relative overflow-hidden rounded-2xl border py-6 backdrop-blur-xl"
-              style={{ borderColor: "var(--border)", backgroundColor: "var(--bg-card)" }}>
+            <div
+              className="glass-panel animate-fade-in delay-500 relative overflow-hidden rounded-2xl border py-6"
+              style={{ borderColor: "var(--border)", backgroundColor: "var(--bg-card)" }}
+            >
               <p className="mb-4 px-6 text-[11px] font-medium uppercase tracking-widest" style={{ color: "var(--text-faint)" }}>
                 Trusted by
               </p>

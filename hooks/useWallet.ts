@@ -23,7 +23,7 @@ export function useWallet() {
 
     try {
       // Simulate wallet connection delay
-      await new Promise((r) => setTimeout(r, 1500));
+      await new Promise((r) => setTimeout(r, 450));
 
       // Simulate occasional connection rejection
       if (Math.random() < 0.1) {

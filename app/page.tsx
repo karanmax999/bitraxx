@@ -1,17 +1,33 @@
-"use client";
-
-import React, { useState } from "react";
+import dynamic from "next/dynamic";
 import Navbar from "@/components/Navbar";
 import HeroSection from "@/components/ui/glassmorphism-trust-hero";
 import CredibilityBand from "@/components/CredibilityBand";
-import StatsSection from "@/components/StatsSection";
-import PresaleProgress from "@/components/PresaleProgress";
-import TokenomicsSection from "@/components/TokenomicsSection";
-import BrxUtilitySection from "@/components/BrxUtilitySection";
-import PricingSection from "@/components/PricingSection";
-import StagesSection from "@/components/StagesSection";
-import RoadmapSection from "@/components/RoadmapSection";
-import FooterSection from "@/components/FooterSection";
+import SectionSkeleton from "@/components/SectionSkeleton";
+
+const StatsSection = dynamic(() => import("@/components/StatsSection"), {
+  loading: () => <SectionSkeleton className="mx-4 my-8 h-36" />,
+});
+const PresaleProgress = dynamic(() => import("@/components/PresaleProgress"), {
+  loading: () => <SectionSkeleton className="mx-4 my-8 h-64" />,
+});
+const TokenomicsSection = dynamic(() => import("@/components/TokenomicsSection"), {
+  loading: () => <SectionSkeleton className="mx-4 my-8 h-80" />,
+});
+const BrxUtilitySection = dynamic(() => import("@/components/BrxUtilitySection"), {
+  loading: () => <SectionSkeleton className="mx-4 my-8 h-96" />,
+});
+const PricingSection = dynamic(() => import("@/components/PricingSection"), {
+  loading: () => <SectionSkeleton className="mx-4 my-8 h-[28rem]" />,
+});
+const StagesSection = dynamic(() => import("@/components/StagesSection"), {
+  loading: () => <SectionSkeleton className="mx-4 my-8 h-48" />,
+});
+const RoadmapSection = dynamic(() => import("@/components/RoadmapSection"), {
+  loading: () => <SectionSkeleton className="mx-4 my-8 h-72" />,
+});
+const FooterSection = dynamic(() => import("@/components/FooterSection"), {
+  loading: () => <SectionSkeleton className="mx-4 my-8 h-32" />,
+});
 
 export default function Home() {
   return (
@@ -22,7 +38,6 @@ export default function Home() {
         <HeroSection />
       </div>
 
-      {/* Credibility numbers band — sits right below hero */}
       <CredibilityBand />
 
       <div id="presale">

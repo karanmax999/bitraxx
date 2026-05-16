@@ -135,7 +135,7 @@ export default function Navbar() {
   return (
     <>
       {/* ── Top bar ── */}
-      <header className="fixed top-0 left-0 right-0 z-50 h-14 border-b backdrop-blur-2xl"
+      <header className="fixed top-0 left-0 right-0 z-50 h-14 border-b backdrop-blur-md"
         style={{ backgroundColor: "var(--nav-bg)", borderBottomColor: "var(--nav-border)" }}>
         <div className="flex h-full items-center justify-between px-5">
 
@@ -154,7 +154,7 @@ export default function Navbar() {
           </div>
 
           <div className="flex items-center gap-2">
-            <AnimatedThemeToggler />
+            <AnimatedThemeToggler sound={false} />
             <WalletConnect variant="outline" />
           </div>
         </div>

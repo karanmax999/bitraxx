@@ -1,3 +1,5 @@
+"use client";
+
 import React from "react";
 import { TrendingUp, Users, DollarSign, Clock } from "lucide-react";
 
@@ -15,7 +17,7 @@ export default function StatsSection() {
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
           {STATS.map(({ icon: Icon, value, label, accent, glow }) => (
             <div key={label}
-              className="group relative overflow-hidden rounded-2xl border border-amber-500/10 bg-[var(--bg-card)] p-6 backdrop-blur-xl transition-all hover:-translate-y-1 hover:border-amber-500/20"
+              className="glass-panel group relative overflow-hidden rounded-2xl border border-amber-500/10 p-6 transition-all hover:-translate-y-1 hover:border-amber-500/20"
               style={{ boxShadow: `0 0 0 0 ${glow}`, transition: "transform 0.2s, box-shadow 0.2s, border-color 0.2s" }}
               onMouseEnter={e => (e.currentTarget.style.boxShadow = `0 8px 32px 0 ${glow}`)}
               onMouseLeave={e => (e.currentTarget.style.boxShadow = `0 0 0 0 ${glow}`)}>

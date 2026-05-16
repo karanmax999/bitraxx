@@ -6,19 +6,16 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "analyze": "set ANALYZE=true&& next build"
   },
   "dependencies": {
     "@number-flow/react": "^0.6.0",
     "@radix-ui/react-dialog": "^1.1.1",
     "@radix-ui/react-slot": "^1.1.0",
-    "@tsparticles/react": "^3.0.0",
-    "@tsparticles/slim": "^3.9.1",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
-    "framer-motion": "^12.38.0",
     "lucide-react": "^0.400.0",
-    "motion": "^12.38.0",
     "next": "14.2.5",
     "react": "^18",
     "react-dom": "^18",

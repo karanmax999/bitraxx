@@ -1,7 +1,6 @@
 "use client";
 
-import React, { useEffect } from "react";
-import { motion } from "framer-motion";
+import React from "react";
 import { Check, Zap, Crown, Rocket } from "lucide-react";
 import { Sparkles } from "@/components/ui/sparkles";
 import dynamic from "next/dynamic";
@@ -92,12 +91,9 @@ function TierCard({ tier, index }: { tier: Tier; index: number }) {
   const Icon = tier.icon;
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 32 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: "-60px" }}
-      transition={{ duration: 0.5, delay: index * 0.12, ease: "easeOut" }}
-      className="relative flex flex-col"
+    <div
+      className="relative flex flex-col animate-fade-slide-up-lg"
+      style={{ animationDelay: `${index * 0.12}s` }}
     >
       {/* Gold gradient border for highlighted card */}
       <div
@@ -114,7 +110,7 @@ function TierCard({ tier, index }: { tier: Tier; index: number }) {
         >
           {/* Sparkles only on highlighted */}
           {tier.highlighted && (
-            <Sparkles color="#f59e0b" density={25} minSize={0.8} maxSize={2} speed={0.7} />
+            <Sparkles color="#f59e0b" density={18} minSize={0.8} maxSize={2} speed={0.6} />
           )}
 
           {/* Ambient glow */}
@@ -231,7 +227,7 @@ function TierCard({ tier, index }: { tier: Tier; index: number }) {
           ⚡ Best Price Available
         </div>
       )}
-    </motion.div>
+    </div>
   );
 }
 
@@ -242,13 +238,7 @@ export default function PricingSection() {
       <div className="mx-auto max-w-6xl">
 
         {/* Header */}
-        <motion.div
-          className="mb-14 text-center"
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.5 }}
-        >
+        <div className="mb-14 animate-fade-slide-up text-center">
           <div
             className="mb-3 inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-widest"
             style={{ borderColor: "rgba(245,158,11,0.25)", backgroundColor: "rgba(245,158,11,0.06)", color: "#f59e0b" }}
@@ -264,7 +254,7 @@ export default function PricingSection() {
             Each stage offers a higher price than the last. The earlier you enter, the greater your potential upside.
             Price targets are projections, not guarantees.
           </p>
-        </motion.div>
+        </div>
 
         {/* Cards */}
         <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
