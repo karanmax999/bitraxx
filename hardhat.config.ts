@@ -1,5 +1,6 @@
 import { HardhatUserConfig } from "hardhat/config";
-import "@nomicfoundation/hardhat-toolbox";
+import "@nomicfoundation/hardhat-toolbox-mocha-ethers";
+import "@nomicfoundation/hardhat-verify";
 import * as dotenv from "dotenv";
 
 dotenv.config();
@@ -29,8 +30,10 @@ const config: HardhatUserConfig = {
       accounts: process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY] : [],
     }
   },
-  etherscan: {
-    apiKey: process.env.BSCSCAN_API_KEY,
+  verify: {
+    etherscan: {
+      apiKey: process.env.BSCSCAN_API_KEY,
+    },
   },
   paths: {
     sources: "./contracts",
