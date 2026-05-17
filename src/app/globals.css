@@ -1,0 +1,150 @@
+@import "tailwindcss";
+
+@theme {
+  --font-display: var(--font-display);
+  --font-body: var(--font-body);
+
+  --color-space-black: #05070A;
+  --color-void-navy: #0A0E14;
+  --color-sand-gold: #B89535;
+  --color-lux-gold: #D4AF37;
+  --color-electric-cyan: #00D9FF;
+  --color-paper-white: #F9F7F2;
+
+  --animate-bloom: gold-bloom 2.5s ease-in-out infinite;
+  --animate-cyan-glow: cyan-glow 2s ease-in-out infinite;
+  --animate-shimmer: shimmer 3s linear infinite;
+  --animate-fadeIn: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  --animate-slideUp: slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+
+  @keyframes gold-bloom {
+    0%, 100% {
+      box-shadow: 0 0 15px -3px rgba(212, 175, 55, 0.15);
+    }
+    50% {
+      box-shadow: 0 0 25px 2px rgba(212, 175, 55, 0.35);
+    }
+  }
+
+  @keyframes cyan-glow {
+    0%, 100% {
+      box-shadow: 0 0 10px -2px rgba(0, 217, 255, 0.1);
+    }
+    50% {
+      box-shadow: 0 0 20px 4px rgba(0, 217, 255, 0.25);
+    }
+  }
+
+  @keyframes shimmer {
+    0% {
+      background-position: 0% 50%;
+    }
+    50% {
+      background-position: 100% 50%;
+    }
+    100% {
+      background-position: 0% 50%;
+    }
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes slideUp {
+    from {
+      opacity: 0;
+      transform: translateY(12px) scale(0.98);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+}
+
+:root {
+  --background: #05070A;
+  --foreground: #e1e2e7;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-body), system-ui, sans-serif;
+}
+
+/* Typography Overrides */
+h1, h2, h3, h4, h5, h6, .font-display {
+  font-family: var(--font-display), sans-serif;
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(10, 14, 20, 0.3);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(212, 175, 55, 0.4);
+}
+
+/* Cinematic Depth & Elevation Layers */
+.surface-layer {
+  background: #0A0E14;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+}
+
+.glass-layer {
+  background: rgba(10, 14, 20, 0.65);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 0.5px solid rgba(255, 255, 255, 0.15);
+  border-radius: 12px;
+}
+
+.gold-bloom {
+  box-shadow: 0 0 15px 0px rgba(212, 175, 55, 0.15);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.gold-bloom:hover {
+  box-shadow: 0 0 25px 2px rgba(212, 175, 55, 0.35);
+  transform: translateY(-1px);
+}
+
+/* Metallic Shimmer for Gold Components */
+.gold-shimmer {
+  background: linear-gradient(90deg, #B89535, #D4AF37, #B89535);
+  background-size: 200% auto;
+  animation: shimmer 4s linear infinite;
+}
+
+/* Gold Thread Decorative Accents */
+.gold-thread-left {
+  border-left: 2.5px solid #D4AF37;
+}
+
+.gold-thread-bottom {
+  border-bottom: 1.5px solid rgba(212, 175, 55, 0.2);
+}
+
+.gold-thread-divider {
+  height: 1px;
+  background: linear-gradient(90deg, rgba(212, 175, 55, 0), rgba(212, 175, 55, 0.25) 50%, rgba(212, 175, 55, 0));
+}
