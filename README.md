@@ -9,7 +9,7 @@
 
 A **production-grade Web3 presale platform** for the $BRX token, featuring seamless wallet integration, KYC verification, referral rewards, and automated presale stage progression.
 
-**Live Demo:** [https://brx-launchpad.manus.space](https://brx-launchpad.manus.space)  
+**Live Demo:** [https://bitraxx-blue.vercel.app/](https://brx-launchpad.manus.space)  
 **Documentation:** [https://docs.brx-launchpad.io](https://docs.brx-launchpad.io)  
 **Support:** [support@bitraxx.io](mailto:support@bitraxx.io)
 
