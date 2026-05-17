@@ -1,57 +1,101 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
+import { useAccount, useDisconnect, useSignMessage } from "wagmi";
+import { SiweMessage } from "siwe";
 
-export type WalletStatus = "disconnected" | "connecting" | "connected";
+export type WalletStatus = "disconnected" | "connecting" | "signing" | "connected" | "error";
 
-const MOCK_ADDRESSES: Record<string, string> = {
-  metamask: "0x71C7656EC7ab88b098defB751B7401B5f6d8976F",
-  walletconnect: "0x3A5e2B4E5e2B4E5e2B4E5e2B4E5e2B4E5e2B4E5e",
-  coinbase: "0xFe89cc7aBB2C4183683ab71653C4cdc9B02D44b7",
-};
+export interface WalletAuthState {
+  status: WalletStatus;
+  address: string | null;
+  isAdmin: boolean;
+  error: string | null;
+}
 
 export function useWallet() {
-  const [status, setStatus] = useState<WalletStatus>("disconnected");
-  const [address, setAddress] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [activeConnector, setActiveConnector] = useState<string | null>(null);
+  const { address: wagmiAddress, chain } = useAccount();
+  const { disconnect: wagmiDisconnect } = useDisconnect();
+  const { signMessageAsync } = useSignMessage();
 
-  const connect = async (connectorId: string) => {
-    setStatus("connecting");
-    setActiveConnector(connectorId);
+  const [authStatus, setAuthStatus] = useState<WalletStatus>("disconnected");
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  /**
+   * Trigger the SIWE sign-in flow after wallet is connected.
+   * Call this immediately after RainbowKit's ConnectButton confirms a connection.
+   */
+  const signIn = useCallback(async () => {
+    if (!wagmiAddress) return;
     setError(null);
+    setAuthStatus("signing");
 
     try {
-      // Simulate wallet connection delay
-      await new Promise((r) => setTimeout(r, 450));
+      // Step 1: Get a fresh nonce from the server
+      const nonceRes = await fetch("/api/auth/nonce");
+      if (!nonceRes.ok) throw new Error("Failed to fetch nonce");
+      const { nonce } = await nonceRes.json();
 
-      // Simulate occasional connection rejection
-      if (Math.random() < 0.1) {
-        throw new Error("Connection request rejected.");
+      // Step 2: Build the EIP-4361 SIWE message
+      const message = new SiweMessage({
+        domain: window.location.host,
+        address: wagmiAddress,
+        statement: "Sign in to Bitraxx BRX Launchpad. This request will not trigger a blockchain transaction or cost any gas fees.",
+        uri: window.location.origin,
+        version: "1",
+        chainId: chain?.id ?? 1,
+        nonce,
+      });
+
+      const preparedMessage = message.prepareMessage();
+
+      // Step 3: Prompt user to sign
+      const signature = await signMessageAsync({ message: preparedMessage });
+
+      // Step 4: Verify with server — creates session cookie
+      const verifyRes = await fetch("/api/auth/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: preparedMessage, signature }),
+      });
+
+      if (!verifyRes.ok) {
+        const body = await verifyRes.json();
+        throw new Error(body.error ?? "Verification failed");
       }
 
-      setStatus("connected");
-      setAddress(MOCK_ADDRESSES[connectorId] || MOCK_ADDRESSES.metamask);
+      const data = await verifyRes.json();
+      setIsAdmin(data.isAdmin ?? false);
+      setAuthStatus("connected");
     } catch (err: any) {
-      setStatus("disconnected");
-      setActiveConnector(null);
-      setError(err.message || "Failed to connect");
-      throw err;
+      if (err?.name === "UserRejectedRequestError" || err?.message?.includes("rejected")) {
+        setError("Signature request was rejected.");
+      } else {
+        setError(err?.message ?? "Sign-in failed. Please try again.");
+      }
+      setAuthStatus("error");
     }
-  };
+  }, [wagmiAddress, chain, signMessageAsync]);
 
-  const disconnect = () => {
-    setStatus("disconnected");
-    setActiveConnector(null);
-    setAddress(null);
-  };
+  const disconnect = useCallback(async () => {
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+    } catch {
+      // Non-fatal
+    }
+    wagmiDisconnect();
+    setAuthStatus("disconnected");
+    setIsAdmin(false);
+    setError(null);
+  }, [wagmiDisconnect]);
 
   return {
-    status,
-    address,
+    status: authStatus,
+    address: wagmiAddress ?? null,
+    isAdmin,
     error,
-    activeConnector,
-    connect,
+    signIn,
     disconnect,
   };
 }

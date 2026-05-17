@@ -1,40 +1,44 @@
 import cron from 'node-cron';
-import { db } from '../../lib/db';
+import { getDb } from '../../lib/db';
 import { presaleRounds, vestingSchedules, purchases } from '../../drizzle/schema';
 import { eq, and, lte, gte, sql } from 'drizzle-orm';
 
 // 1. Stage Progression Monitor (every 5 minutes)
 cron.schedule('*/5 * * * *', async () => {
   console.log('[Heartbeat] Checking Stage Progression...');
-  const liveRound = await db.query.presaleRounds.findFirst({
-    where: eq(presaleRounds.status, 'live'),
-  });
+  try {
+    const db = await getDb();
+    const liveRound = await db.query.presaleRounds.findFirst({
+      where: eq(presaleRounds.status, 'live'),
+    });
 
-  if (liveRound) {
-    const raisedUsd = parseFloat(liveRound.raisedUsd || '0');
-    const hardCapUsd = parseFloat(liveRound.hardCapUsd || '0');
+    if (liveRound) {
+      const raisedUsd = parseFloat(liveRound.raisedUsd || '0');
+      const hardCapUsd = parseFloat(liveRound.hardCapUsd || '0');
 
-    if (raisedUsd >= hardCapUsd) {
-      console.log(`[Heartbeat] Hard cap reached for round ${liveRound.stage}. Moving to next stage...`);
-      
-      // Mark current as completed
-      await db.update(presaleRounds)
-        .set({ status: 'completed' })
-        .where(eq(presaleRounds.id, liveRound.id));
-
-      // Find next round
-      const nextRound = await db.query.presaleRounds.findFirst({
-        where: eq(presaleRounds.status, 'upcoming'),
-        orderBy: (rounds, { asc }) => [asc(rounds.id)],
-      });
-
-      if (nextRound) {
+      if (raisedUsd >= hardCapUsd) {
+        console.log(`[Heartbeat] Hard cap reached for round ${liveRound.stage}. Moving to next stage...`);
+        
+        // Mark current as completed
         await db.update(presaleRounds)
-          .set({ status: 'live' })
-          .where(eq(presaleRounds.id, nextRound.id));
-        console.log(`[Heartbeat] Started next round: ${nextRound.stage}`);
+          .set({ status: 'completed' })
+          .where(eq(presaleRounds.id, liveRound.id));
+
+        // Find next round
+        const nextRound = await db.query.presaleRounds.findFirst({
+          where: eq(presaleRounds.status, 'upcoming'),
+        });
+
+        if (nextRound) {
+          await db.update(presaleRounds)
+            .set({ status: 'live' })
+            .where(eq(presaleRounds.id, nextRound.id));
+          console.log(`[Heartbeat] Started next round: ${nextRound.stage}`);
+        }
       }
     }
+  } catch (err) {
+    console.error('[Heartbeat] Stage progression error:', err);
   }
 });
 
@@ -44,23 +48,26 @@ cron.schedule('*/5 * * * *', async () => {
 // 3. Vesting Release (daily at midnight UTC)
 cron.schedule('0 0 * * *', async () => {
   console.log('[Heartbeat] Processing Vesting Releases...');
-  const now = new Date();
-  
-  const pendingVesting = await db.query.vestingSchedules.findMany({
-    where: lte(vestingSchedules.nextReleaseDate, now),
-  });
-
-  for (const schedule of pendingVesting) {
-    // Logic to calculate release amount based on JSON schedule
-    // This is a simplified version
-    const releaseAmount = BigInt(1000); // Mock amount
+  try {
+    const db = await getDb();
+    const now = new Date();
     
-    await db.update(vestingSchedules)
-      .set({
-        releasedTokens: (schedule.releasedTokens || 0n) + releaseAmount,
-        nextReleaseDate: new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000), // Next month
-      })
-      .where(eq(vestingSchedules.id, schedule.id));
+    const pendingVesting = await db.query.vestingSchedules.findMany({
+      where: lte(vestingSchedules.nextReleaseDate, now),
+    });
+
+    for (const schedule of pendingVesting) {
+      const releaseAmount = BigInt(1000); // Placeholder — replace with real schedule logic
+      
+      await db.update(vestingSchedules)
+        .set({
+          releasedTokens: (schedule.releasedTokens || 0n) + releaseAmount,
+          nextReleaseDate: new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000),
+        })
+        .where(eq(vestingSchedules.id, schedule.id));
+    }
+  } catch (err) {
+    console.error('[Heartbeat] Vesting release error:', err);
   }
 });
 

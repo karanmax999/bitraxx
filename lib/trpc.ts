@@ -13,7 +13,11 @@ export const trpc = createTRPCNext<AppRouter>({
     return {
       links: [
         httpBatchLink({
-          url: `http://localhost:4000/trpc`,
+          url: `${getBaseUrl()}/api/trpc`,
+          // Forward credentials (iron-session cookie) with every request
+          fetch(url, options) {
+            return fetch(url, { ...options, credentials: 'include' });
+          },
         }),
       ],
     };

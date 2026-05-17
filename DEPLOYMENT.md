@@ -1,51 +1,95 @@
 # Bitraxx Deployment Guide
 
-This operations-ready manual outlines the requirements, checklists, and procedures for deploying the Bitraxx BRX Launchpad platform to production. 
+This operations-ready manual outlines the requirements, checklists, and procedures for deploying the Bitraxx BRX Launchpad platform to production.
+
+**Auth Strategy**: Sign-In with Ethereum (SIWE) + iron-session cookies  
+**Primary Deployment**: Vercel (recommended)  
+**Secondary Options**: Docker, PM2 on Linux VM  
 
 ---
 
 ## 📋 Table of Contents
 1. [Production Readiness Checklist](#-production-readiness-checklist)
-2. [Target Environments](#-target-environments)
-   - [Manus Hosting (Recommended)](#1-manus-hosting-recommended)
-   - [Docker Containerization](#2-docker-containerization)
-   - [Traditional Linux VM (systemd + PM2)](#3-traditional-linux-vm-systemd--pm2)
-3. [Database Migrations Policy](#-database-migrations-policy)
-4. [Hardening & Production Environment Keys](#-hardening--production-environment-keys)
-5. [Monitoring & Health Probes](#-monitoring--health-probes)
-6. [Post-Deployment Smoke Testing](#-post-deployment-smoke-testing)
+2. [Vercel Deployment (Recommended)](#1-vercel-deployment-recommended)
+3. [Docker Containerization](#2-docker-containerization)
+4. [Traditional Linux VM (systemd + PM2)](#3-traditional-linux-vm-systemd--pm2)
+5. [Database Migrations Policy](#-database-migrations-policy)
+6. [Environment Variables Reference](#-environment-variables-reference)
+7. [Monitoring & Health Probes](#-monitoring--health-probes)
+8. [Post-Deployment Smoke Testing](#-post-deployment-smoke-testing)
 
 ---
 
 ## 🏆 Production Readiness Checklist
 
-Before moving any commit or build artifact to the production network, the operations team must verify that each checklist item is completed:
+Before moving any commit to production:
 
-- [ ] **Tests**: All tests are passing successfully (`pnpm test`).
-- [ ] **Environment**: Strict production `.env` parameters configured inside safe key vaults.
-- [ ] **Database Migrations**: Database schemas are synchronized and migrated with the live database pool.
-- [ ] **SSL / TLS Certificates**: Active, valid SSL certificates (HTTPS mandatory) with TLS 1.3 enforced.
-- [ ] **OAuth Registrations**: Production app credentials configured inside the Manus Developers Console.
-- [ ] **AWS S3 IAM Roles**: Dedicated AWS S3 bucket created for identity verifications with private read permissions and pre-signed write grants.
-- [ ] **Sentry Monitoring**: Target DSN configured for tracking runtime failures.
-- [ ] **Rate Limiting**: Rate limit parameters enabled across the API endpoints.
+- [ ] **Tests**: All tests passing (`pnpm test`)
+- [ ] **TypeScript**: Zero compilation errors (`pnpm check`)
+- [ ] **Build**: Production build succeeds (`pnpm build`)
+- [ ] **Environment**: All required env vars set in Vercel dashboard
+- [ ] **Database**: Schema pushed and seed data loaded
+- [ ] **WalletConnect**: Production project ID configured
+- [ ] **SESSION_SECRET**: 32+ char cryptographically random value set
+- [ ] **SSL**: Auto-provisioned by Vercel ✓
 
 ---
 
 ## 🌐 Target Environments
 
-### 1. Manus Hosting (Recommended)
-Our platform is optimized for deploying directly via Manus Hosting pipelines:
+### 1. Vercel Deployment (Recommended)
 
-1. Push your audited, checked code to the target repository (e.g. `main` or `release` branch).
-2. Authenticate and log in to the **Manus Developer Management Console**.
-3. Under the target project section, navigate to **Deployments**.
-4. Link your Git repository and select the **Production Branch**.
-5. Map your secure production environment variables (details in [Hardening](#-hardening--production-environment-keys)).
-6. Click **Publish/Deploy** to execute the automatic build pipeline.
-7. Verify that the routing engine maps request pathways cleanly.
+Vercel is the primary deployment target. Next.js API routes handle all tRPC and auth endpoints as serverless functions.
 
----
+#### Step 1: Install Vercel CLI (optional, for CLI deployment)
+```bash
+npm i -g vercel
+```
+
+#### Step 2: Connect Repository
+1. Go to [vercel.com/new](https://vercel.com/new)
+2. Import your GitHub repository (`karanmax999/bitraxx`)
+3. Framework: **Next.js** (auto-detected)
+4. Build command: `pnpm build`
+5. Output directory: `.next`
+
+#### Step 3: Set Environment Variables
+In **Vercel → Settings → Environment Variables**, add:
+
+| Variable | Value |
+|---|---|
+| `DATABASE_URL` | `mysql://user:pass@host:3306/brx_prod` |
+| `SESSION_SECRET` | 64-char hex string (see below) |
+| `NEXT_PUBLIC_WAGMI_PROJECT_ID` | WalletConnect Cloud project ID |
+| `NODE_ENV` | `production` |
+| `NEXT_PUBLIC_APP_URL` | `https://your-domain.vercel.app` |
+
+Generate `SESSION_SECRET`:
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+```
+
+#### Step 4: Deploy
+```bash
+# Via CLI
+vercel --prod
+
+# Or push to main branch (auto-deploys via GitHub integration)
+git push origin main
+```
+
+#### Step 5: Run Database Migrations
+```bash
+# Against production DATABASE_URL
+pnpm db:push
+
+# Seed presale rounds
+pnpm db:seed
+
+# Create admin user (replace with your wallet address)
+pnpm tsx scripts/seed-admin.ts --wallet 0xYourAdminWallet
+```
+
 
 ### 2. Docker Containerization
 Docker containerization is recommended for Kubernetes, AWS ECS, or standard container service environments:
