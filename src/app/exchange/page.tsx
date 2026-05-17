@@ -19,7 +19,8 @@ import {
   Coins,
   BadgeAlert,
   MessageSquare,
-  Sparkles
+  Sparkles,
+  RefreshCw
 } from 'lucide-react';
 
 interface CryptoAsset {
@@ -43,6 +44,116 @@ export default function ExchangePage() {
     volume: '$4.2M',
     chain: 'EVM (Multi-chain)'
   });
+
+  // Timeframe and Candlestick Chart States
+  const [timeframe, setTimeframe] = useState<'1m' | '5m' | '15m' | '1h'>('5m');
+  
+  interface Candle {
+    time: string;
+    open: number;
+    high: number;
+    low: number;
+    close: number;
+    volume: number;
+  }
+  
+  const [chartData, setChartData] = useState<Candle[]>([]);
+  const [hoveredCandle, setHoveredCandle] = useState<Candle | null>(null);
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+
+  // Generate mock historical candles based on selected asset price
+  const generateMockData = (basePrice: number, timeframeStr: string): Candle[] => {
+    const count = 28;
+    const data: Candle[] = [];
+    let currentPrice = basePrice * 0.97; // start slightly lower for visual rise
+    const now = new Date();
+    
+    for (let i = 0; i < count; i++) {
+      const minutesAgo = (count - i) * (timeframeStr === '1m' ? 1 : timeframeStr === '5m' ? 5 : timeframeStr === '15m' ? 15 : 60);
+      const candleTime = new Date(now.getTime() - minutesAgo * 60 * 1000);
+      const timeLabel = candleTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+      
+      const change = (Math.random() - 0.43) * (basePrice * 0.012); // drift upward slightly
+      const open = currentPrice;
+      const close = currentPrice + change;
+      const high = Math.max(open, close) + Math.random() * (basePrice * 0.005);
+      const low = Math.min(open, close) - Math.random() * (basePrice * 0.005);
+      const volume = Math.floor(Math.random() * 80000 + 20000);
+      
+      data.push({
+        time: timeLabel,
+        open,
+        high,
+        low,
+        close,
+        volume
+      });
+      currentPrice = close;
+    }
+    return data;
+  };
+
+  // Synchronize mock historical chart data on asset/timeframe updates
+  useEffect(() => {
+    const data = generateMockData(selectedAsset.price, timeframe);
+    setChartData(data);
+    setHoveredCandle(null);
+    setHoveredIndex(null);
+  }, [selectedAsset, timeframe]);
+
+  // Simulate live price ticks for the latest candlestick bar in the chart
+  useEffect(() => {
+    if (chartData.length === 0) return;
+    
+    const interval = setInterval(() => {
+      setChartData(prev => {
+        if (prev.length === 0) return prev;
+        const lastIndex = prev.length - 1;
+        const lastCandle = prev[lastIndex];
+        
+        // Brownian price movement simulator matching latency ticks
+        const priceDiff = (Math.random() - 0.5) * (selectedAsset.price * 0.0015);
+        const nextClose = lastCandle.close + priceDiff;
+        
+        const updatedLast = {
+          ...lastCandle,
+          close: nextClose,
+          high: Math.max(lastCandle.high, nextClose),
+          low: Math.min(lastCandle.low, nextClose)
+        };
+        
+        const nextArr = [...prev];
+        nextArr[lastIndex] = updatedLast;
+        return nextArr;
+      });
+    }, 1500);
+    
+    return () => clearInterval(interval);
+  }, [chartData, selectedAsset]);
+
+  // Mouse position event calculator relative to container width
+  const handleMouseMove = (e: React.MouseEvent<SVGSVGElement, MouseEvent>) => {
+    const svg = e.currentTarget;
+    const rect = svg.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const pct = x / rect.width;
+    
+    const count = chartData.length;
+    if (count === 0) return;
+    
+    let index = Math.floor(pct * count);
+    if (index < 0) index = 0;
+    if (index >= count) index = count - 1;
+    
+    setHoveredIndex(index);
+    setHoveredCandle(chartData[index]);
+  };
+
+  const handleMouseLeave = () => {
+    setHoveredIndex(null);
+    setHoveredCandle(null);
+  };
+
 
   // State for BitRaxx Shield™
   const [shieldActive, setShieldActive] = useState<boolean>(true);
@@ -388,8 +499,8 @@ export default function ExchangePage() {
         <section className="xl:col-span-5 flex flex-col gap-6">
           
           {/* Interactive Chart Visualizer */}
-          <div className="glass-layer rounded-2xl p-5 flex flex-col gap-4 flex-1 min-h-[300px]">
-            <div className="flex items-center justify-between">
+          <div className="glass-layer rounded-2xl p-5 flex flex-col gap-4 flex-1 min-h-[340px]">
+            <div className="flex items-center justify-between flex-wrap gap-3">
               <div>
                 <h2 className="text-sm font-display font-bold uppercase tracking-widest text-zinc-200 flex items-center gap-1.5">
                   <Activity className="w-4 h-4 text-electric-cyan" />
@@ -397,40 +508,226 @@ export default function ExchangePage() {
                 </h2>
                 <p className="text-[9px] text-zinc-500 font-display font-bold uppercase tracking-widest mt-0.5">Matching Latency: {matchingLatency}ms • sub-millisecond precision</p>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-electric-cyan animate-ping" />
-                <span className="text-[9px] font-display font-bold text-electric-cyan tracking-widest">LIVE</span>
+              <div className="flex items-center gap-3">
+                {/* Timeframe Selectors */}
+                <div className="flex items-center gap-1 bg-space-black p-0.5 rounded-lg border border-white/5">
+                  {(['1m', '5m', '15m', '1h'] as const).map(tf => (
+                    <button
+                      key={tf}
+                      type="button"
+                      onClick={() => setTimeframe(tf)}
+                      className={`px-2 py-0.5 rounded text-[9px] font-display font-bold uppercase transition-all duration-200 ${timeframe === tf ? 'bg-lux-gold text-black font-extrabold' : 'text-zinc-500 hover:text-zinc-300'}`}
+                    >
+                      {tf}
+                    </button>
+                  ))}
+                </div>
+                
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-electric-cyan animate-ping" />
+                  <span className="text-[9px] font-display font-bold text-electric-cyan tracking-widest">LIVE</span>
+                </div>
               </div>
             </div>
 
-            <div className="flex-1 w-full bg-space-black/60 rounded-xl relative overflow-hidden border border-white/5 p-4 min-h-[220px] flex flex-col justify-between">
-              <div className="absolute top-4 left-4 z-10 flex gap-4 text-[10px] font-display font-bold uppercase tracking-wider">
-                <div><span className="text-zinc-500">O:</span> <span className="text-zinc-300">{(selectedAsset.price * 0.995).toFixed(2)}</span></div>
-                <div><span className="text-zinc-500">H:</span> <span className="text-zinc-300">{(selectedAsset.price * 1.012).toFixed(2)}</span></div>
-                <div><span className="text-zinc-500">L:</span> <span className="text-rose-400">{(selectedAsset.price * 0.989).toFixed(2)}</span></div>
-                <div><span className="text-zinc-500">C:</span> <span className="text-electric-cyan">{selectedAsset.price.toFixed(2)}</span></div>
+            {/* Price OHLC Display Header */}
+            {(() => {
+              const activeCandle = hoveredCandle || chartData[chartData.length - 1];
+              if (!activeCandle) return null;
+              const isUp = activeCandle.close >= activeCandle.open;
+              const percentDiff = ((activeCandle.close - activeCandle.open) / activeCandle.open) * 100;
+              
+              return (
+                <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5 bg-space-black/40 border border-white/5 rounded-xl px-4 py-2.5 text-[10px] font-display font-semibold select-none">
+                  <span className="text-zinc-500">TIME: <span className="text-zinc-300 font-mono font-medium">{activeCandle.time}</span></span>
+                  <span className="text-zinc-500">O: <span className="text-zinc-300 font-mono font-medium">${activeCandle.open.toFixed(selectedAsset.symbol === 'TRX' ? 4 : 2)}</span></span>
+                  <span className="text-zinc-500">H: <span className="text-zinc-300 font-mono font-medium">${activeCandle.high.toFixed(selectedAsset.symbol === 'TRX' ? 4 : 2)}</span></span>
+                  <span className="text-zinc-500">L: <span className="text-zinc-300 font-mono font-medium">${activeCandle.low.toFixed(selectedAsset.symbol === 'TRX' ? 4 : 2)}</span></span>
+                  <span className="text-zinc-500">C: <span className={`font-mono font-bold ${isUp ? 'text-electric-cyan' : 'text-rose-400'}`}>${activeCandle.close.toFixed(selectedAsset.symbol === 'TRX' ? 4 : 2)}</span></span>
+                  <span className={`px-2 py-0.5 rounded font-mono font-extrabold ${isUp ? 'bg-electric-cyan/10 text-electric-cyan' : 'bg-rose-500/10 text-rose-400'}`}>
+                    {isUp ? '+' : ''}{percentDiff.toFixed(2)}%
+                  </span>
+                </div>
+              );
+            })()}
+
+            {/* Interactive SVG Chart */}
+            <div className="flex-1 w-full bg-space-black/60 rounded-xl relative overflow-hidden border border-white/5 p-4 min-h-[220px] flex flex-col justify-between group">
+              
+              {/* Backgrid Lines */}
+              <div className="absolute inset-0 flex flex-col justify-between pointer-events-none p-4 pb-12 pt-8 opacity-[0.03]">
+                <div className="border-t border-dashed border-white w-full" />
+                <div className="border-t border-dashed border-white w-full" />
+                <div className="border-t border-dashed border-white w-full" />
+                <div className="border-t border-dashed border-white w-full" />
               </div>
 
-              <div className="absolute inset-0 grid grid-rows-6 grid-cols-6 pointer-events-none opacity-[0.03]">
-                {Array.from({ length: 36 }).map((_, i) => (
-                  <div key={i} className="border-t border-l border-white" />
-                ))}
-              </div>
+              {/* Render Candles & Volume */}
+              {chartData.length > 0 ? (
+                <div className="w-full flex-1 relative min-h-[150px]">
+                  <svg 
+                    className="w-full h-full cursor-crosshair overflow-visible select-none"
+                    viewBox="0 0 100 100" 
+                    preserveAspectRatio="none"
+                    onMouseMove={handleMouseMove}
+                    onMouseLeave={handleMouseLeave}
+                  >
+                    {/* Definitions for Glow Gradients */}
+                    <defs>
+                      <linearGradient id="cyan-glow-grad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#00D9FF" stopOpacity="0.25" />
+                        <stop offset="100%" stopColor="#00D9FF" stopOpacity="0" />
+                      </linearGradient>
+                      <linearGradient id="rose-glow-grad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#f43f5e" stopOpacity="0.2" />
+                        <stop offset="100%" stopColor="#f43f5e" stopOpacity="0" />
+                      </linearGradient>
+                    </defs>
 
-              <div className="w-full flex-1 flex items-end justify-between px-2 pt-10">
-                <svg className="w-full h-full min-h-[140px]" viewBox="0 0 100 50" preserveAspectRatio="none">
-                  <path d={`M 0,40 L 10,35 L 20,28 L 30,33 L 40,18 L 50,25 L 60,12 L 70,19 L 80,10 L 90,14 L 100,5`} fill="none" stroke="#00D9FF" strokeWidth="1.2" />
-                </svg>
-              </div>
+                    {(() => {
+                      const prices = chartData.map(c => [c.high, c.low]).flat();
+                      const maxPrice = Math.max(...prices);
+                      const minPrice = Math.min(...prices);
+                      const priceRange = maxPrice - minPrice || 1;
+                      const maxVolume = Math.max(...chartData.map(c => c.volume), 1);
 
+                      const getY = (val: number) => {
+                        return 88 - ((val - minPrice) / priceRange) * 75; // map to Y coordinates between 13 and 88
+                      };
+
+                      const count = chartData.length;
+                      const colWidth = 92 / count;
+
+                      return (
+                        <>
+                          {/* 1. Semi-transparent Volume Bars */}
+                          {chartData.map((c, i) => {
+                            const x = 4 + i * colWidth + colWidth * 0.15;
+                            const w = colWidth * 0.7;
+                            const h = (c.volume / maxVolume) * 12;
+                            const y = 98 - h;
+                            return (
+                              <rect 
+                                key={`vol-${i}`}
+                                x={x}
+                                y={y}
+                                width={w}
+                                height={h}
+                                fill="#ffffff"
+                                opacity="0.06"
+                                rx="0.5"
+                              />
+                            );
+                          })}
+
+                          {/* 2. Candlesticks wicks & bodies */}
+                          {chartData.map((c, i) => {
+                            const xCenter = 4 + i * colWidth + colWidth / 2;
+                            const yHigh = getY(c.high);
+                            const yLow = getY(c.low);
+                            const yOpen = getY(c.open);
+                            const yClose = getY(c.close);
+                            
+                            const isUp = c.close >= c.open;
+                            const strokeColor = isUp ? '#00D9FF' : '#f43f5e';
+                            
+                            const rectY = Math.min(yOpen, yClose);
+                            const rectH = Math.max(1, Math.abs(yOpen - yClose));
+                            const rectW = colWidth * 0.65;
+                            const rectX = xCenter - rectW / 2;
+
+                            return (
+                              <g key={`candle-${i}`}>
+                                {/* Wick Line */}
+                                <line 
+                                  x1={xCenter} 
+                                  y1={yHigh} 
+                                  x2={xCenter} 
+                                  y2={yLow} 
+                                  stroke={strokeColor} 
+                                  strokeWidth="0.35" 
+                                  opacity="0.8"
+                                />
+                                {/* Candle Body Rect */}
+                                <rect 
+                                  x={rectX} 
+                                  y={rectY} 
+                                  width={rectW} 
+                                  height={rectH} 
+                                  fill={strokeColor}
+                                  stroke={strokeColor}
+                                  strokeWidth="0.15"
+                                  opacity="0.9"
+                                  rx="0.3"
+                                  className="transition-all duration-300"
+                                />
+                              </g>
+                            );
+                          })}
+
+                          {/* 3. Hover Guide Crosshair */}
+                          {hoveredIndex !== null && hoveredCandle && (
+                            <>
+                              {(() => {
+                                const hx = 4 + hoveredIndex * colWidth + colWidth / 2;
+                                const hy = getY(hoveredCandle.close);
+                                
+                                return (
+                                  <>
+                                    {/* Vertical guide line */}
+                                    <line 
+                                      x1={hx} 
+                                      y1={4} 
+                                      x2={hx} 
+                                      y2={98} 
+                                      stroke="#D4AF37" 
+                                      strokeWidth="0.25" 
+                                      strokeDasharray="1.5,1.5"
+                                      opacity="0.6"
+                                    />
+                                    {/* Horizontal guide line */}
+                                    <line 
+                                      x1={4} 
+                                      y1={hy} 
+                                      x2={96} 
+                                      y2={hy} 
+                                      stroke="#D4AF37" 
+                                      strokeWidth="0.25" 
+                                      strokeDasharray="1.5,1.5"
+                                      opacity="0.6"
+                                    />
+                                    {/* Glowing intersection dot */}
+                                    <circle 
+                                      cx={hx} 
+                                      cy={hy} 
+                                      r="1.2" 
+                                      fill="#D4AF37" 
+                                      stroke="#ffffff" 
+                                      strokeWidth="0.3"
+                                    />
+                                  </>
+                                );
+                              })()}
+                            </>
+                          )}
+                        </>
+                      );
+                    })()}
+                  </svg>
+                </div>
+              ) : (
+                <div className="flex-1 flex items-center justify-center">
+                  <RefreshCw className="w-6 h-6 text-zinc-600 animate-spin" />
+                </div>
+              )}
+
+              {/* Dynamic bottom time axis */}
               <div className="flex justify-between text-[8px] font-display font-semibold tracking-widest text-zinc-500 border-t border-white/5 pt-2 mt-2 select-none">
-                <span>15:45</span>
-                <span>15:50</span>
-                <span>15:55</span>
-                <span>16:00</span>
-                <span>16:05</span>
-                <span>16:10</span>
-                <span>16:15 (GMT+3)</span>
+                <span>{chartData[0]?.time || '15:45'}</span>
+                <span>{chartData[Math.floor(chartData.length * 0.25)]?.time || '15:52'}</span>
+                <span>{chartData[Math.floor(chartData.length * 0.5)]?.time || '16:00'}</span>
+                <span>{chartData[Math.floor(chartData.length * 0.75)]?.time || '16:07'}</span>
+                <span>{chartData[chartData.length - 1]?.time || '16:15'} (GMT+3)</span>
               </div>
             </div>
           </div>

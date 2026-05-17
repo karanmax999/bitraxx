@@ -105,6 +105,73 @@ export default function LaunchpadPage() {
   const [manualPayMethod, setManualPayMethod] = useState<boolean>(false);
   const [manualTxHash, setManualTxHash] = useState<string>('');
 
+  // Simulated Global Live Contributions Feed
+  interface Contribution {
+    id: string;
+    wallet: string;
+    amount: string;
+    currency: string;
+    tokens: string;
+    time: string;
+    flag: string;
+    network: string;
+  }
+  
+  const [contributions, setContributions] = useState<Contribution[]>([]);
+
+  useEffect(() => {
+    const initial = [
+      { id: '1', wallet: '0x71C...3a5f', amount: '12,500', currency: 'USDT', tokens: '312,500', time: '4s ago', flag: '🇸🇦', network: 'BSC' },
+      { id: '2', wallet: '0x9e2...d11e', amount: '4.5', currency: 'ETH', tokens: '388,125', time: '12s ago', flag: '🇬🇧', network: 'Ethereum' },
+      { id: '3', wallet: '0x3a1...c4b9', amount: '25,000', currency: 'USDC', tokens: '625,000', time: '18s ago', flag: '🇸🇦', network: 'BSC' },
+      { id: '4', wallet: '0x8f4...e2a9', amount: '15', currency: 'BNB', tokens: '221,250', time: '28s ago', flag: '🇦🇪', network: 'BSC' }
+    ];
+    setContributions(initial);
+    
+    const interval = setInterval(() => {
+      const wallets = ['0x4a9...b71c', '0x8e2...f92a', '0x3c1...d45e', '0x5b8...a12c', '0x7d2...e54f'];
+      const amounts = ['3,200', '8,500', '15,000', '42,000', '6,800', '2.5', '18.5'];
+      const currencies = ['USDT', 'USDC', 'ETH', 'BNB'];
+      const flags = ['🇸🇦', '🇦🇪', '🇶🇦', '🇬🇧', '🇨🇦', '🇸🇬'];
+      
+      const randWallet = wallets[Math.floor(Math.random() * wallets.length)];
+      const randAmount = amounts[Math.floor(Math.random() * amounts.length)];
+      const randCurrency = randAmount.includes('.') ? 'ETH' : currencies[Math.floor(Math.random() * (currencies.length - 1))];
+      const randFlag = flags[Math.floor(Math.random() * flags.length)];
+      
+      const numVal = parseFloat(randAmount.replace(/,/g, ''));
+      let rate = 1;
+      if (randCurrency === 'ETH') rate = 3450;
+      else if (randCurrency === 'BNB') rate = 590;
+      const tokenValue = (numVal * rate) / 0.04; // seed base rate
+      
+      const newTx: Contribution = {
+        id: Date.now().toString(),
+        wallet: randWallet,
+        amount: randAmount,
+        currency: randCurrency,
+        tokens: Math.floor(tokenValue).toLocaleString(undefined, { maximumFractionDigits: 0 }),
+        time: 'just now',
+        flag: randFlag,
+        network: randCurrency === 'ETH' ? 'Ethereum' : 'BSC'
+      };
+      
+      setContributions(prev => {
+        const updated = prev.map(item => {
+          if (item.time === 'just now') return { ...item, time: '4s ago' };
+          if (item.time.endsWith('s ago')) {
+            const seconds = parseInt(item.time) + 4;
+            return { ...item, time: `${seconds}s ago` };
+          }
+          return item;
+        });
+        return [newTx, ...updated.slice(0, 3)];
+      });
+    }, 4500);
+    
+    return () => clearInterval(interval);
+  }, []);
+
   // Toast notifications
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
@@ -440,9 +507,10 @@ export default function LaunchpadPage() {
                       ))}
                     </div>
 
-                    <div className="flex-1 w-full bg-space-black/60 rounded-xl border border-dashed border-white/10 p-6 flex flex-col items-center justify-center relative min-h-[160px] overflow-hidden">
+                    <div className="flex-1 w-full bg-space-black/60 rounded-xl border border-dashed border-white/10 p-6 flex flex-col items-center justify-center relative min-h-[180px] overflow-hidden">
+                      
                       {kycStatus === 'scanning' && (
-                        <div className="absolute inset-0 bg-gradient-to-b from-electric-cyan/10 to-transparent h-1/2 border-b-2 border-electric-cyan/60 animate-scan pointer-events-none" />
+                        <div className="absolute inset-0 bg-gradient-to-b from-electric-cyan/20 to-transparent h-1/2 border-b-2 border-electric-cyan/70 animate-pulse pointer-events-none" style={{ animationDuration: '1.2s' }} />
                       )}
 
                       {kycStatus === 'unverified' && (
@@ -460,7 +528,7 @@ export default function LaunchpadPage() {
                       {kycStatus === 'uploading' && (
                         <div className="w-full max-w-[200px] text-center flex flex-col items-center gap-2">
                           <RefreshCw className="w-6 h-6 text-lux-gold animate-spin" />
-                          <span className="text-[10px] font-display font-bold text-white uppercase tracking-widest">Uploading...</span>
+                          <span className="text-[10px] font-display font-bold text-white uppercase tracking-widest">Uploading Document...</span>
                           <div className="w-full bg-void-navy h-1 rounded-full overflow-hidden border border-white/5">
                             <div className="bg-lux-gold h-full" style={{ width: `${kycProgress}%` }} />
                           </div>
@@ -468,19 +536,50 @@ export default function LaunchpadPage() {
                       )}
 
                       {kycStatus === 'scanning' && (
-                        <div className="text-center flex flex-col items-center gap-2">
-                          <Activity className="w-8 h-8 text-electric-cyan animate-pulse" />
-                          <span className="text-[10px] font-display font-bold text-electric-cyan uppercase tracking-widest animate-pulse">Running Holographic Scan</span>
+                        <div className="text-center flex flex-col items-center gap-2.5 z-10 animate-pulse">
+                          <Activity className="w-8 h-8 text-electric-cyan animate-spin" style={{ animationDuration: '3s' }} />
+                          <span className="text-[10px] font-display font-bold text-electric-cyan uppercase tracking-widest">Running Holographic Scan</span>
+                          <span className="text-[8px] text-zinc-500 font-mono">Consensus checking: {kycFileName}</span>
                         </div>
                       )}
 
                       {kycStatus === 'approved' && (
-                        <div className="text-center flex flex-col items-center gap-2.5 animate-scaleIn">
-                          <div className="w-10 h-10 rounded-full bg-electric-cyan/15 flex items-center justify-center shadow-lg border border-electric-cyan/20">
-                            <FileCheck className="w-5 h-5 text-electric-cyan" />
+                        <div className="text-center flex flex-col items-center gap-3 animate-scaleIn w-full max-w-[280px] p-4 bg-gradient-to-br from-lux-gold/10 via-space-black to-electric-cyan/5 border border-lux-gold/20 rounded-2xl relative overflow-hidden select-none">
+                          {/* Top gold line indicator */}
+                          <div className="absolute top-0 left-0 w-full h-[3px] bg-gradient-to-r from-lux-gold via-white to-electric-cyan" />
+                          <div className="absolute -right-8 -bottom-8 w-20 h-20 bg-lux-gold/5 rounded-full blur-xl pointer-events-none" />
+
+                          <div className="flex justify-between items-center w-full border-b border-white/5 pb-2">
+                            <div className="flex items-center gap-1">
+                              <span className="text-[10px]">🇸🇦</span>
+                              <span className="text-[8px] font-display font-bold text-lux-gold uppercase tracking-widest">Sovereign Investor</span>
+                            </div>
+                            <span className="text-[7.5px] font-display font-extrabold text-[#10b981] bg-[#10b981]/15 border border-[#10b981]/20 px-2 py-0.5 rounded-full uppercase tracking-wider">
+                              Approved
+                            </span>
                           </div>
-                          <span className="text-xs font-display font-bold text-white uppercase tracking-wider">Identity Scanner Success</span>
-                          <p className="text-[9px] text-electric-cyan uppercase tracking-widest font-semibold">Tier 2 Approved. contributor cap limit increased to $250k.</p>
+
+                          <div className="flex flex-col gap-1.5 w-full text-left font-display">
+                            <div>
+                              <span className="text-[6.5px] text-zinc-500 font-bold uppercase tracking-widest block">Consensus Wallet Address</span>
+                              <span className="text-[8.5px] font-mono text-zinc-300 font-semibold">{address ? address.substring(0, 12) + '...' + address.substring(address.length - 8) : '0x71C2...3a5f'}</span>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2 mt-1">
+                              <div>
+                                <span className="text-[6.5px] text-zinc-500 font-bold uppercase tracking-widest block">Accreditation</span>
+                                <span className="text-[8.5px] text-zinc-300 font-bold uppercase">Class II Tier</span>
+                              </div>
+                              <div>
+                                <span className="text-[6.5px] text-zinc-500 font-bold uppercase tracking-widest block">Limit Cap</span>
+                                <span className="text-[8.5px] text-lux-gold font-extrabold">$250,000 USD</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="w-full flex items-center justify-center gap-1.5 bg-[#10b981]/10 border border-[#10b981]/20 rounded-lg py-1.5 mt-1 select-none">
+                            <FileCheck className="w-4 h-4 text-[#10b981]" />
+                            <span className="text-[8px] font-display font-bold text-[#10b981] uppercase tracking-wider">Consensus Registry Completed</span>
+                          </div>
                         </div>
                       )}
                     </div>
@@ -516,6 +615,55 @@ export default function LaunchpadPage() {
                   </div>
                 </div>
 
+              </div>
+
+              {/* LIVE PRESALE ACTIVITY LEDGER */}
+              <div className="glass-layer p-6 rounded-2xl border-t border-white/5 flex flex-col gap-4 mt-8 shadow-[0_0_20px_rgba(0,217,255,0.01)] select-none">
+                <div className="flex items-center justify-between border-b border-white/5 pb-3">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-lux-gold animate-ping" />
+                    <span className="w-2 h-2 rounded-full bg-lux-gold absolute" />
+                    <h3 className="font-display font-bold text-xs uppercase tracking-widest text-white flex items-center gap-1.5 ml-1">
+                      Live Presale Contribution Feed
+                    </h3>
+                  </div>
+                  <span className="text-[8px] font-display font-bold text-zinc-500 uppercase tracking-widest">Global Activity • Real-time Ticker</span>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 overflow-hidden">
+                  {contributions.map((tx) => (
+                    <div 
+                      key={tx.id} 
+                      className="bg-space-black/60 border border-white/5 rounded-xl p-4 flex flex-col justify-between gap-3 relative overflow-hidden transition-all duration-500 hover:border-lux-gold/30 hover:scale-[1.01] animate-slideIn gold-thread-left"
+                    >
+                      {/* Top row */}
+                      <div className="flex justify-between items-center">
+                        <span className="text-[10px] font-mono text-zinc-400 font-bold">{tx.flag} {tx.wallet}</span>
+                        <span className="text-[8px] font-display font-bold text-zinc-500 uppercase tracking-wider">{tx.time}</span>
+                      </div>
+                      
+                      {/* Mid row */}
+                      <div className="flex justify-between items-end mt-1">
+                        <div>
+                          <span className="text-[8px] font-display font-bold text-zinc-500 uppercase tracking-widest block mb-0.5">CONTRIBUTED</span>
+                          <span className="text-xs font-display font-bold text-white font-mono">{tx.amount} <span className="text-[9px] text-lux-gold font-normal">{tx.currency}</span></span>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-[8px] font-display font-bold text-zinc-500 uppercase tracking-widest block mb-0.5">ACQUIRED</span>
+                          <span className="text-xs font-display font-bold text-electric-cyan font-mono">+{tx.tokens} <span className="text-[8px] text-zinc-400 font-normal">BRX</span></span>
+                        </div>
+                      </div>
+
+                      {/* Network Badge bottom */}
+                      <div className="flex items-center justify-between border-t border-white/5 pt-2 mt-1">
+                        <span className="text-[8px] text-zinc-500 font-display font-bold uppercase tracking-wider">Multi-Chain Vault</span>
+                        <span className={`text-[8px] font-display font-extrabold uppercase px-2 py-0.5 rounded-full ${tx.network === 'BSC' ? 'bg-[#f0b90b]/10 text-[#f0b90b] border border-[#f0b90b]/20' : 'bg-[#627eea]/10 text-[#8c8c8c] border border-[#627eea]/20'}`}>
+                          {tx.network} Network
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
 
             </div>
@@ -777,68 +925,92 @@ export default function LaunchpadPage() {
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 animate-slideUp">
               
               {/* Compound Staking vault */}
-              <div className="lg:col-span-8 glass-layer p-6 rounded-2xl flex flex-col justify-between">
-                <div>
-                  <h3 className="font-display font-bold text-lg text-white border-b border-white/5 pb-4 mb-5">Strategic Validator Staking</h3>
-                  <p className="text-zinc-400 text-xs leading-relaxed font-body">
-                    Lock allocations to secure validator consensus nodes and compound APY yields. Higher stakes unlock higher shield insurance percentages.
-                  </p>
+              {(() => {
+                const activeApy = stakingMonths <= 3 ? 10.0 : stakingMonths <= 6 ? 12.5 : stakingMonths <= 9 ? 15.0 : 18.5;
+                const rawAmt = parseFloat(stakingAmount) || 0;
+                const rewardYield = (rawAmt * (activeApy / 100) * stakingMonths) / 12;
+                const votingWeight = stakingMonths >= 9 ? (stakingMonths >= 12 ? '2.5x' : '1.8x') : '1.2x';
+                const gasSavings = rawAmt > 0 ? (12.45 + (rawAmt * 0.00012)) : 0;
+                const governanceBadge = stakingMonths >= 12 ? 'Sovereign Consensus' : stakingMonths >= 9 ? 'Lead Delegate' : 'DAO Voter';
+                
+                return (
+                  <div className="lg:col-span-8 glass-layer p-6 rounded-2xl flex flex-col justify-between">
+                    <div>
+                      <h3 className="font-display font-bold text-lg text-white border-b border-white/5 pb-4 mb-5">Strategic Validator Staking</h3>
+                      <p className="text-zinc-400 text-xs leading-relaxed font-body">
+                        Lock allocations to secure validator consensus nodes and compound APY yields. Higher stakes unlock higher shield insurance percentages.
+                      </p>
 
-                  {/* Calculator elements */}
-                  <div className="bg-space-black/60 border border-white/5 rounded-xl p-5 my-6 flex flex-col gap-4 select-none">
-                    <div className="flex justify-between items-center text-xs font-display font-bold uppercase tracking-widest">
-                      <span className="text-zinc-500">Target Stake Amount ($BRX)</span>
-                      <span className="text-lux-gold font-bold">18.5% APR Vault</span>
+                      {/* Calculator elements */}
+                      <div className="bg-space-black/60 border border-white/5 rounded-xl p-5 my-6 flex flex-col gap-4 select-none">
+                        <div className="flex justify-between items-center text-xs font-display font-bold uppercase tracking-widest">
+                          <span className="text-zinc-500">Target Stake Amount ($BRX)</span>
+                          <span className="text-lux-gold font-bold">{activeApy.toFixed(1)}% APR Vault</span>
+                        </div>
+
+                        <input
+                          type="number"
+                          value={stakingAmount}
+                          onChange={(e) => setStakingAmount(e.target.value)}
+                          className="w-full bg-void-navy border border-white/10 rounded-xl px-4 py-2.5 text-sm font-display font-bold text-white focus:outline-none focus:border-electric-cyan transition-all"
+                        />
+
+                        <div className="flex flex-col gap-1.5 mt-2">
+                          <div className="flex justify-between text-[8px] font-display font-bold uppercase tracking-widest text-zinc-500">
+                            <span>3 Months (10.0% APY)</span>
+                            <span className="text-white font-semibold">{stakingMonths} Months Lock</span>
+                            <span>12 Months (18.5% APY)</span>
+                          </div>
+                          <input 
+                            type="range" 
+                            min="3" 
+                            max="12" 
+                            step="3" 
+                            value={stakingMonths}
+                            onChange={(e) => setStakingMonths(parseInt(e.target.value))}
+                            className="w-full accent-lux-gold bg-void-navy rounded-lg cursor-pointer h-1.5" 
+                          />
+                        </div>
+
+                        {/* ADVANCED YIELD BREAKDOWN GRID */}
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 border-t border-white/5 pt-4 mt-2">
+                          <div className="bg-void-navy/40 p-2.5 rounded-lg border border-white/5">
+                            <span className="text-[7.5px] font-display font-bold uppercase tracking-widest text-zinc-500 block mb-1">Gross Yields</span>
+                            <span className="text-sm font-display font-bold text-lux-gold font-mono">
+                              {Math.floor(rewardYield).toLocaleString(undefined, { maximumFractionDigits: 0 })} BRX
+                            </span>
+                          </div>
+                          <div className="bg-void-navy/40 p-2.5 rounded-lg border border-white/5">
+                            <span className="text-[7.5px] font-display font-bold uppercase tracking-widest text-zinc-500 block mb-1">Shield™ Coverage</span>
+                            <span className="text-sm font-display font-bold text-electric-cyan uppercase">
+                              +{stakingMonths >= 9 ? '40%' : '20%'} loss
+                            </span>
+                          </div>
+                          <div className="bg-void-navy/40 p-2.5 rounded-lg border border-white/5">
+                            <span className="text-[7.5px] font-display font-bold uppercase tracking-widest text-zinc-500 block mb-1">DAO Voting Power</span>
+                            <span className="text-sm font-display font-bold text-indigo-400 font-mono">
+                              {votingWeight}
+                            </span>
+                          </div>
+                          <div className="bg-void-navy/40 p-2.5 rounded-lg border border-white/5">
+                            <span className="text-[7.5px] font-display font-bold uppercase tracking-widest text-zinc-500 block mb-1">Governance Slot</span>
+                            <span className="text-xs font-display font-bold text-emerald-400 uppercase truncate block">
+                              {governanceBadge}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
                     </div>
 
-                    <input
-                      type="number"
-                      value={stakingAmount}
-                      onChange={(e) => setStakingAmount(e.target.value)}
-                      className="w-full bg-void-navy border border-white/10 rounded-xl px-4 py-2.5 text-sm font-display font-bold text-white focus:outline-none focus:border-electric-cyan transition-all"
-                    />
-
-                    <div className="flex flex-col gap-1.5 mt-2">
-                      <div className="flex justify-between text-[8px] font-display font-bold uppercase tracking-widest text-zinc-500">
-                        <span>3 Months (10% APY)</span>
-                        <span className="text-white font-semibold">{stakingMonths} Months Lock</span>
-                        <span>12 Months (18.5% APY)</span>
-                      </div>
-                      <input 
-                        type="range" 
-                        min="3" 
-                        max="12" 
-                        step="3" 
-                        value={stakingMonths}
-                        onChange={(e) => setStakingMonths(parseInt(e.target.value))}
-                        className="w-full accent-lux-gold bg-void-navy rounded-lg cursor-pointer h-1.5" 
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4 border-t border-white/5 pt-4 mt-2">
-                      <div>
-                        <span className="text-[9px] font-display font-bold uppercase tracking-widest text-zinc-500 block mb-1">Calculated Reward Yield</span>
-                        <span className="text-base font-display font-bold text-lux-gold font-mono">
-                          {(( (parseFloat(stakingAmount) || 0) * 0.185 * stakingMonths) / 12).toLocaleString(undefined, { maximumFractionDigits: 0 })} BRX
-                        </span>
-                      </div>
-                      <div>
-                        <span className="text-[9px] font-display font-bold uppercase tracking-widest text-zinc-500 block mb-1">BitRaxx Shield™ Boost</span>
-                        <span className="text-base font-display font-bold text-electric-cyan uppercase">
-                          +{stakingMonths >= 9 ? '40%' : '20%'} loss coverage
-                        </span>
-                      </div>
-                    </div>
+                    <button 
+                      onClick={() => showToast(`🔐 Vault Staked! Allocated ${parseFloat(stakingAmount).toLocaleString()} BRX inside validator consensus node successfully for ${stakingMonths} months.`)}
+                      className="w-full py-3.5 bg-lux-gold text-black hover:bg-[#e9c349] font-display font-bold uppercase tracking-widest text-xs rounded-full transition-all gold-bloom"
+                    >
+                      Confirm validator Stake Lock
+                    </button>
                   </div>
-                </div>
-
-                <button 
-                  onClick={() => showToast(`🔐 vault Staked! Allocated ${stakingAmount} BRX inside validator node successfully.`)}
-                  className="w-full py-3.5 bg-lux-gold text-black hover:bg-[#e9c349] font-display font-bold uppercase tracking-widest text-xs rounded-full transition-all gold-bloom"
-                >
-                  Confirm validator Stake Lock
-                </button>
-              </div>
+                );
+              })()}
 
               {/* Governance Proposal sidebar */}
               <div className="lg:col-span-4 glass-layer p-6 rounded-2xl flex flex-col gap-4 select-none">
